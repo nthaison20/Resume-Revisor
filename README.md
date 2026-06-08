@@ -1,39 +1,145 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Resume Revisor
 
-## Getting Started
+An AI-powered resume tailoring app built with Next.js 14, Supabase, and the Anthropic API. Upload your resume, paste a job description, and get a rewritten resume with an ATS match score and side-by-side comparison.
 
-First, run the development server:
+## Features
+
+- Upload resume as PDF or Word (.docx)
+- AI rewrite via Claude (Anthropic API) tailored to a specific job description
+- ATS keyword match score — before and after
+- Side-by-side comparison with keyword highlighting
+- Export revised resume as PDF
+- Auth (sign up, log in, log out) via Supabase
+- Sessions persist across page refreshes
+
+## Tech Stack
+
+- **Framework:** Next.js 14 (App Router)
+- **Styling:** Tailwind CSS
+- **Auth + DB + Storage:** Supabase
+- **AI:** Anthropic API (`claude-sonnet-4-5`)
+- **PDF parsing:** `pdf-parse`, `mammoth`
+- **PDF export:** `jsPDF`
+- **Hosting:** Netlify
+
+---
+
+## Local Development
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Set up environment variables
+
+Create a `.env.local` file in the project root:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+ANTHROPIC_API_KEY=your-anthropic-api-key
+```
+
+### 3. Set up Supabase
+
+Run the following SQL in your Supabase project (SQL Editor):
+
+```sql
+-- Resumes table
+create table resumes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  original_text text,
+  file_url text,
+  created_at timestamp with time zone default now()
+);
+alter table resumes enable row level security;
+create policy "Users can manage their own resumes"
+  on resumes for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Revisions table
+create table revisions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  resume_id uuid references resumes,
+  job_description text,
+  revised_json jsonb,
+  score_before int,
+  score_after int,
+  created_at timestamp with time zone default now()
+);
+alter table revisions enable row level security;
+create policy "Users can manage their own revisions"
+  on revisions for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+```
+
+Create a private **Storage bucket** named `resumes`, then run:
+
+```sql
+create policy "Users can upload their own resumes"
+  on storage.objects for insert
+  with check (bucket_id = 'resumes' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "Users can read their own resumes"
+  on storage.objects for select
+  using (bucket_id = 'resumes' and auth.uid()::text = (storage.foldername(name))[1]);
+```
+
+In Supabase → **Authentication → URL Configuration**, add:
+```
+http://localhost:3000/auth/callback
+```
+
+### 4. Run the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy on Netlify
 
-## Learn More
+### 1. Push to GitHub
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+git push -u origin main
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 2. Connect to Netlify
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Go to [netlify.com](https://netlify.com) → **Add new site → Import an existing project**
+2. Connect your GitHub account and select this repo
+3. Set **Base directory** to `resume-revisor` (if deployed from a monorepo subfolder)
+4. Build command and publish directory are set automatically via `netlify.toml`
 
-## Deploy on Vercel
+### 3. Add environment variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+In Netlify → **Site configuration → Environment variables**, add:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-"# Resume-Revisor" 
-"# Resume-Revisor" 
-"# Resume-Revisor" 
+| Key | Value |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
+| `ANTHROPIC_API_KEY` | Your Anthropic API key |
+
+### 4. Update Supabase redirect URL
+
+In Supabase → **Authentication → URL Configuration**, add your Netlify URL:
+```
+https://your-site.netlify.app/auth/callback
+```
+
+Netlify will auto-deploy on every push to `main`.
