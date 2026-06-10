@@ -2,6 +2,11 @@
 
 All notable changes to Resume Revisor are documented here.
 
+## [1.2.1] — 2026-06-10
+
+### Fixed
+- **PDF parsing failed on Netlify** with `DOMMatrix is not defined`. Root cause: `pdf-parse` v2 bundles a modern pdf.js build that requires browser DOM globals absent in Netlify's serverless Node runtime. Downgraded to `pdf-parse` v1.1.1 (older pdf.js that runs in Node) and imported its lib entry directly to avoid the package's debug harness. Verified against real exported resumes.
+
 ## [1.2] — 2026-06-10
 
 ### Added

@@ -31,16 +31,13 @@ export async function POST(request: NextRequest) {
 
   try {
     if (fileName.endsWith('.pdf')) {
-      // pdf-parse v2 exposes a PDFParse class (the old default-function API is gone)
-      const { PDFParse } = await import('pdf-parse')
-      const parser = new PDFParse({ data: new Uint8Array(buffer) })
-      try {
-        const result = await parser.getText()
-        // pdf-parse v2 inserts page separators like "-- 1 of 3 --"; strip them
-        text = result.text.replace(/^\s*--\s*\d+\s+of\s+\d+\s*--\s*$/gim, '')
-      } finally {
-        await parser.destroy()
-      }
+      // pdf-parse v1: import the lib entry directly. The package index runs a
+      // debug harness that reads a bundled test PDF and crashes when bundled.
+      // v1's pdf.js works in serverless Node (v2 needs browser DOMMatrix globals).
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buf: Buffer) => Promise<{ text: string }>
+      const result = await pdfParse(buffer)
+      text = result.text
     } else if (fileName.endsWith('.docx')) {
       const mammoth = await import('mammoth')
       const result = await mammoth.extractRawText({ buffer })
