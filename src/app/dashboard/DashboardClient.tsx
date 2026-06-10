@@ -21,6 +21,7 @@ export default function DashboardClient() {
   const [resumeText, setResumeText] = useState('')
   const [resumeId, setResumeId] = useState<string | null>(null)
   const [jobDescription, setJobDescription] = useState('')
+  const [resumeName, setResumeName] = useState('')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [revisedJson, setRevisedJson] = useState<Record<string, any> | null>(null)
   const [score, setScore] = useState<ScoreData | null>(null)
@@ -42,7 +43,7 @@ export default function DashboardClient() {
     const res = await fetch('/api/revise-resume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resumeText, jobDescription, resumeId }),
+      body: JSON.stringify({ resumeText, jobDescription, resumeId, name: resumeName.trim() || null }),
     })
 
     const json = await res.json()
@@ -61,6 +62,7 @@ export default function DashboardClient() {
     setResumeText('')
     setResumeId(null)
     setJobDescription('')
+    setResumeName('')
     setRevisedJson(null)
     setScore(null)
     setError(null)
@@ -104,6 +106,21 @@ export default function DashboardClient() {
             {resumeText}
           </pre>
         </details>
+
+        <div>
+          <label htmlFor="resume-name" className="block text-sm font-medium text-gray-700 mb-1">
+            Name this revision <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            id="resume-name"
+            type="text"
+            value={resumeName}
+            onChange={(e) => setResumeName(e.target.value)}
+            placeholder="e.g. Google SWE Application"
+            maxLength={80}
+            className="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
 
         <textarea
           value={jobDescription}

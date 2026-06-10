@@ -2,6 +2,11 @@
 
 All notable changes to Resume Revisor are documented here.
 
+## [1.3] — 2026-06-10
+
+### Added
+- **Name your revisions:** An optional name field on the revise step. The name is shown as the title in revision history (with the job-description snippet as a subtitle) and is used as the downloaded PDF's filename. Added a `name` column to the `revisions` table.
+
 ## [1.2.1] — 2026-06-10
 
 ### Fixed

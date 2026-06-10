@@ -13,10 +13,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { resumeText, jobDescription, resumeId } = body as {
+  const { resumeText, jobDescription, resumeId, name } = body as {
     resumeText: string
     jobDescription: string
     resumeId: string | null
+    name: string | null
   }
 
   if (!resumeText || !jobDescription) {
@@ -78,6 +79,7 @@ Only return the JSON object. No preamble, no explanation, no markdown fences.`,
     .insert({
       user_id: user.id,
       resume_id: resumeId ?? null,
+      name: name?.trim() || null,
       job_description: jobDescription,
       revised_json: revisedJson,
       score_before: before.score,
