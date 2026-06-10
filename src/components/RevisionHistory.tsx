@@ -18,6 +18,9 @@ export default function RevisionHistory({ refreshKey }: { refreshKey?: number })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -48,6 +51,35 @@ export default function RevisionHistory({ refreshKey }: { refreshKey?: number })
     const fileName = slug ? `${slug}.pdf` : `revised-resume-${stamp}.pdf`
     exportResumeToPdf(rev.revised_json, fileName)
     setDownloadingId(null)
+  }
+
+  function startEdit(rev: Revision) {
+    setEditingId(rev.id)
+    setEditValue(rev.name ?? '')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditValue('')
+  }
+
+  async function saveEdit(id: string) {
+    setSavingId(id)
+    const newName = editValue.trim() || null
+    try {
+      const res = await fetch('/api/revisions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name: newName }),
+      })
+      if (res.ok) {
+        setRevisions((prev) => prev.map((r) => (r.id === id ? { ...r, name: newName } : r)))
+        setEditingId(null)
+        setEditValue('')
+      }
+    } finally {
+      setSavingId(null)
+    }
   }
 
   function formatDate(iso: string) {
@@ -83,18 +115,56 @@ export default function RevisionHistory({ refreshKey }: { refreshKey?: number })
           >
             <div className="min-w-0 flex-1">
               <p className="text-xs text-gray-400">{formatDate(rev.created_at)}</p>
-              {rev.name ? (
-                <>
-                  <p className="text-sm font-medium text-gray-900 truncate mt-0.5">{rev.name}</p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {rev.job_description?.slice(0, 80) || ''}
-                    {rev.job_description && rev.job_description.length > 80 ? '…' : ''}
-                  </p>
-                </>
+
+              {editingId === rev.id ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={editValue}
+                    maxLength={80}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveEdit(rev.id)
+                      if (e.key === 'Escape') cancelEdit()
+                    }}
+                    placeholder="Revision name"
+                    className="flex-1 min-w-0 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => saveEdit(rev.id)}
+                    disabled={savingId === rev.id}
+                    className="text-sm font-medium text-blue-600 hover:underline disabled:opacity-50"
+                  >
+                    {savingId === rev.id ? 'Saving…' : 'Save'}
+                  </button>
+                  <button onClick={cancelEdit} className="text-sm text-gray-400 hover:text-gray-700">
+                    Cancel
+                  </button>
+                </div>
               ) : (
-                <p className="text-sm text-gray-700 truncate mt-0.5">
-                  {rev.job_description?.slice(0, 90) || 'Untitled revision'}
-                  {rev.job_description && rev.job_description.length > 90 ? '…' : ''}
+                <div className="flex items-center gap-2 mt-0.5">
+                  {rev.name ? (
+                    <p className="text-sm font-medium text-gray-900 truncate">{rev.name}</p>
+                  ) : (
+                    <p className="text-sm text-gray-700 truncate">
+                      {rev.job_description?.slice(0, 80) || 'Untitled revision'}
+                      {rev.job_description && rev.job_description.length > 80 ? '…' : ''}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => startEdit(rev)}
+                    className="shrink-0 text-xs text-gray-400 hover:text-blue-600"
+                  >
+                    Rename
+                  </button>
+                </div>
+              )}
+
+              {rev.name && editingId !== rev.id && (
+                <p className="text-xs text-gray-500 truncate">
+                  {rev.job_description?.slice(0, 80) || ''}
+                  {rev.job_description && rev.job_description.length > 80 ? '…' : ''}
                 </p>
               )}
               {rev.score_before !== null && rev.score_after !== null && (

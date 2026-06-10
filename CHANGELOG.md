@@ -2,6 +2,11 @@
 
 All notable changes to Resume Revisor are documented here.
 
+## [1.4] — 2026-06-10
+
+### Added
+- **Rename revisions from history:** Each revision in the history list now has a "Rename" button for inline editing (Enter to save, Esc to cancel). Backed by a new `PATCH /api/revisions` endpoint.
+
 ## [1.3] — 2026-06-10
 
 ### Added

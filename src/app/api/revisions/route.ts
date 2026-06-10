@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 // Returns the authenticated user's revision history, newest first.
@@ -20,4 +20,30 @@ export async function GET() {
   }
 
   return NextResponse.json({ revisions: data ?? [] })
+}
+
+// Rename a revision. Body: { id, name }
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { id, name } = (await request.json()) as { id?: string; name?: string }
+  if (!id) {
+    return NextResponse.json({ error: 'Revision id is required.' }, { status: 400 })
+  }
+
+  const { error } = await supabase
+    .from('revisions')
+    .update({ name: name?.trim() || null })
+    .eq('id', id)
+    .eq('user_id', user.id) // RLS also enforces this, but be explicit
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
 }
