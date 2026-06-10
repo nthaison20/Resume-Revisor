@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import ResumeUploader from '@/components/ResumeUploader'
 import ComparisonView from '@/components/ComparisonView'
+import RevisionHistory from '@/components/RevisionHistory'
 
 type Step = 'upload' | 'job-description' | 'revised'
 
@@ -25,6 +26,8 @@ export default function DashboardClient() {
   const [score, setScore] = useState<ScoreData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Bumped after each successful revision to refresh the history list
+  const [historyKey, setHistoryKey] = useState(0)
 
   function handleParsed(text: string, id: string | null) {
     setResumeText(text)
@@ -48,6 +51,7 @@ export default function DashboardClient() {
     } else {
       setRevisedJson(json.revisedJson)
       setScore(json.score)
+      setHistoryKey((k) => k + 1)
       setStep('revised')
     }
     setLoading(false)
@@ -63,6 +67,7 @@ export default function DashboardClient() {
     setStep('upload')
   }
 
+  function renderStep() {
   // ── Upload step ──────────────────────────────────────────────────────────
   if (step === 'upload') {
     return (
@@ -146,6 +151,24 @@ export default function DashboardClient() {
       {revisedJson && score && (
         <ComparisonView originalText={resumeText} revisedJson={revisedJson} score={score} />
       )}
+    </div>
+  )
+  }
+
+  return (
+    <div className="space-y-10">
+      {renderStep()}
+
+      {/* ── Revision history ──────────────────────────────────────────────── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Revision history</h2>
+            <p className="text-sm text-gray-500">Download any past revision as a PDF.</p>
+          </div>
+        </div>
+        <RevisionHistory refreshKey={historyKey} />
+      </section>
     </div>
   )
 }

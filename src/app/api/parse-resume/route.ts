@@ -16,20 +16,61 @@ export async function POST(request: NextRequest) {
   }
 
   const fileName = file.name.toLowerCase()
+
+  // Validate file size (max 10 MB)
+  const MAX_BYTES = 10 * 1024 * 1024
+  if (file.size > MAX_BYTES) {
+    return NextResponse.json({ error: 'File is too large. Maximum size is 10 MB.' }, { status: 400 })
+  }
+  if (file.size === 0) {
+    return NextResponse.json({ error: 'File appears to be empty.' }, { status: 400 })
+  }
+
   const buffer = Buffer.from(await file.arrayBuffer())
   let text = ''
 
-  if (fileName.endsWith('.pdf')) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
-    const result = await pdfParse(buffer)
-    text = result.text
-  } else if (fileName.endsWith('.docx')) {
-    const mammoth = await import('mammoth')
-    const result = await mammoth.extractRawText({ buffer })
-    text = result.value
-  } else {
-    return NextResponse.json({ error: 'Unsupported file type. Upload a PDF or .docx file.' }, { status: 400 })
+  try {
+    if (fileName.endsWith('.pdf')) {
+      // pdf-parse v2 exposes a PDFParse class (the old default-function API is gone)
+      const { PDFParse } = await import('pdf-parse')
+      const parser = new PDFParse({ data: new Uint8Array(buffer) })
+      try {
+        const result = await parser.getText()
+        // pdf-parse v2 inserts page separators like "-- 1 of 3 --"; strip them
+        text = result.text.replace(/^\s*--\s*\d+\s+of\s+\d+\s*--\s*$/gim, '')
+      } finally {
+        await parser.destroy()
+      }
+    } else if (fileName.endsWith('.docx')) {
+      const mammoth = await import('mammoth')
+      const result = await mammoth.extractRawText({ buffer })
+      text = result.value
+    } else if (fileName.endsWith('.doc')) {
+      return NextResponse.json(
+        { error: 'Legacy .doc files are not supported. Please re-save as .docx or PDF and try again.' },
+        { status: 400 }
+      )
+    } else {
+      return NextResponse.json({ error: 'Unsupported file type. Upload a PDF or .docx file.' }, { status: 400 })
+    }
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'Unknown parsing error'
+    console.error('Parse failed:', detail)
+    return NextResponse.json(
+      { error: `Could not read this file. It may be corrupted or password-protected. (${detail})` },
+      { status: 422 }
+    )
+  }
+
+  // Guard against image-based PDFs (scanned) that yield no extractable text
+  if (text.trim().length < 20) {
+    return NextResponse.json(
+      {
+        error:
+          'We could not extract readable text. If this is a scanned or image-based PDF, please upload a text-based version or a .docx file.',
+      },
+      { status: 422 }
+    )
   }
 
   // Store the file in Supabase Storage under the user's folder

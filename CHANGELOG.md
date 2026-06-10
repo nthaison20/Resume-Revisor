@@ -2,6 +2,19 @@
 
 All notable changes to Resume Revisor are documented here.
 
+## [1.2] — 2026-06-10
+
+### Added
+- **Revision history:** The dashboard now lists all of a user's past revisions (date, job-description snippet, ATS before/after score) and lets each one be re-downloaded as a PDF. New `GET /api/revisions` endpoint backs the list.
+
+### Fixed
+- **File upload parsing:** Migrated to the rewritten `pdf-parse` v2 `PDFParse` API, resolving failures where some PDFs would not parse. Added:
+  - File size (max 10 MB) and empty-file validation
+  - Clear, specific error messages for corrupted/password-protected files
+  - Detection of scanned/image-based PDFs with no extractable text
+  - A helpful message for unsupported legacy `.doc` files (asking the user to re-save as `.docx`/PDF)
+  - Stripping of pdf-parse page separators (`-- 1 of N --`) from extracted text
+
 ## [1.1] — 2026-06-08
 
 ### Added
