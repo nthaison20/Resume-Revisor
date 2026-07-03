@@ -1,0 +1,25 @@
+name: Supabase keep-alive
+
+# Free-tier Supabase pauses after ~1 week without API activity, which takes
+# down login for the live app. This pings the database twice a week so it
+# never goes idle long enough to pause.
+
+on:
+  schedule:
+    - cron: '0 9 * * 1,4' # Mondays and Thursdays, 09:00 UTC
+  workflow_dispatch: {} # allows manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "https://kemkfuwkejxnavtufebr.supabase.co/rest/v1/resumes?select=id&limit=1")
+          echo "Supabase responded with HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Keep-alive ping failed — database may be paused or the key rotated."
+            exit 1
+          fi
